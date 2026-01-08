@@ -1,0 +1,2 @@
+# No additional dependencies required
+# All dependencies are covered by main project requirements

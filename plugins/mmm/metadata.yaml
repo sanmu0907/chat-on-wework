@@ -1,0 +1,12 @@
+name: mm_plugin
+version: 1.0.0
+author: your_name
+description: 一个功能丰富的AstrBot美图发送插件，支持多种图片类型和触发方式，包括美女图片、黑丝图片、JK图片等。
+repo: repo_url
+enable: true
+triggers:
+  - 666
+  - 黑丝
+  - jk
+  - 诱惑
+  - 白丝 

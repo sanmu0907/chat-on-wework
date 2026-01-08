@@ -1,0 +1,62 @@
+# 完整迁移打包 - 排除规则
+# 此文件用于完整迁移到另一台电脑，保留所有配置和数据
+
+# Python 缓存（这些会自动重新生成）
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# 虚拟环境（不需要迁移，目标机器重新安装依赖）
+venv/
+env/
+ENV/
+.venv/
+
+# Git 仓库（如果不需要 git 历史）
+.git/
+.github/
+
+# 日志文件（可选，如果不需要旧日志）
+# 如果需要保留日志，注释掉下面这行
+run.log
+error.log
+nohup.out
+
+# 临时压缩包
+*.rar
+*.7z
+dify-on-wechat*.zip
+dify-on-wechat*.tar.gz
+
+# IDE 配置（个人配置，不需要迁移）
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 打包工具生成的文件
+dist/
+scan_dependencies.py
+PACKAGE_SUMMARY.md
+
+# 测试和调试脚本（可选）
+test_*.py
+debug_*.py
+explore_*.py
+check_*.py
+find_*.py
+
+# 临时文件
+=*
+nul
+
+# Claude Code 配置（可选，如果另一台电脑不需要）
+# 如果需要保留，注释掉下面这行
+# .claude/

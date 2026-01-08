@@ -1,0 +1,27 @@
+{
+  "enable": true,
+  "triggers": ["666", "黑丝"],
+  "video_apis": {
+    "帅哥视频": "http://api.yujn.cn/api/xgg.php?type=json",
+    "怼人视频": "http://www.yujn.cn/api/duiren.php?type=json",
+    "神回复视频": "http://www.yujn.cn/api/shf.php?type=json",
+    "随机视频": "http://www.yujn.cn/api/yht.php?type=json",
+    "慢摇视频": "http://api.yujn.cn/api/manyao.php?type=json",
+    "白丝视频": "http://api.yujn.cn/api/baisis.php?type=json",
+    "黑丝视频": "http://api.yujn.cn/api/heisis.php?type=json",
+    "吊带视频": "http://api.yujn.cn/api/diaodai.php?type=json",
+    "清纯视频": "http://api.yujn.cn/api/qingchun.php?type=json",
+    "玉足视频": "http://api.yujn.cn/api/yuzu.php?type=json",
+汉服视频  http://api.yujn.cn/api/hanfu.php
+cos视频 http://api.yujn.cn/api/COS.php 
+双倍快乐视频http://api.yujn.cn/api/sbkl.php
+甜妹视频http://api.yujn.cn/api/tianmei.php
+变装视频 http://api.yujn.cn/api/bianzhuang.php?
+
+    "jk": "http://api.yujn.cn/api/jk.php?",
+    "撒娇": "http://api.yujn.cn/api/yujie.php",
+    "写真": "http://api.yujn.cn/api/mnxz.php",
+    "举牌": "http://api.yujn.cn/api/hsjp2.php",
+    "白丝": "http://api.yujn.cn/api/baisi.php"
+  }
+} 

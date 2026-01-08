@@ -1,0 +1,70 @@
+# 打包时排除的文件和目录
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# 虚拟环境
+venv/
+env/
+ENV/
+.venv/
+
+# Git
+.git/
+.gitignore
+.github/
+
+# 临时文件和日志
+tmp/
+*.log
+*.tmp
+nohup.out
+run.log
+error.log
+
+# 用户配置（敏感信息）
+config.json
+plugins/config.json
+
+# 缓存和数据
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 压缩包
+*.zip
+*.tar.gz
+*.rar
+*.7z
+dify-on-wechat.rar
+plugins.rar
+
+# 测试和开发文件
+test_*.py
+debug_*.py
+explore_*.py
+check_*.py
+find_*.py
+scan_dependencies.py
+
+# 企业微信缓存
+wework_room_members.json
+
+# 临时文件
+=*
+nul
