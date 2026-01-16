@@ -23,7 +23,7 @@ class ImageCacheManager:
         self.expire_seconds = expire_days * 24 * 3600
         self.index_file = os.path.join(cache_dir, "index.json")
         self.index = {}
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()  # 使用可重入锁避免嵌套锁死锁
 
         # 创建缓存目录
         os.makedirs(cache_dir, exist_ok=True)
@@ -106,6 +106,62 @@ class ImageCacheManager:
 
         except Exception as e:
             logger.error(f"[ImageCacheManager] 保存图片失败: {str(e)}")
+            return None
+
+    def update_external_url(self, image_path, external_url):
+        """
+        更新图片的外部链接（如imgbb URL）
+
+        Args:
+            image_path: 图片路径
+            external_url: 外部链接URL
+
+        Returns:
+            是否更新成功
+        """
+        try:
+            with self.lock:
+                # 查找包含该路径的索引项
+                for cache_key, cache_info in self.index.items():
+                    if cache_info.get("path") == image_path or cache_info.get("original_path") == image_path:
+                        cache_info["external_url"] = external_url
+                        cache_info["external_url_time"] = int(time.time())
+                        logger.info(f"[ImageCacheManager] 更新外部链接: {cache_key} -> {external_url}")
+                        self._save_index()
+                        return True
+
+                logger.warning(f"[ImageCacheManager] 未找到图片路径对应的索引: {image_path}")
+                return False
+
+        except Exception as e:
+            logger.error(f"[ImageCacheManager] 更新外部链接失败: {str(e)}")
+            return False
+
+    def get_external_url(self, image_path):
+        """
+        获取图片的外部链接
+
+        Args:
+            image_path: 图片路径
+
+        Returns:
+            外部链接URL，如果不存在返回None
+        """
+        try:
+            with self.lock:
+                # 查找包含该路径的索引项
+                for cache_info in self.index.values():
+                    if cache_info.get("path") == image_path or cache_info.get("original_path") == image_path:
+                        external_url = cache_info.get("external_url")
+                        if external_url:
+                            logger.info(f"[ImageCacheManager] 找到外部链接: {image_path[:50]} -> {external_url}")
+                            return external_url
+
+                logger.debug(f"[ImageCacheManager] 未找到图片的外部链接: {image_path[:50]}")
+                return None
+
+        except Exception as e:
+            logger.error(f"[ImageCacheManager] 获取外部链接失败: {str(e)}")
             return None
 
     def get_image(self, user_id, room_id, skip_latest=0):

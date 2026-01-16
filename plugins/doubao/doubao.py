@@ -558,29 +558,43 @@ class Doubao(Plugin):
                         quote_info["ref_image_urls"] = ref_image_urls
                     else:
                         # 历史中找不到，说明是外部图片
-                        # 尝试上传到图床获取公网URL，然后尝试传给豆包
-                        logger.info(f"[Doubao] 未在历史中找到图片，尝试上传到图床获取URL")
+                        # 先尝试从ImageCacheManager获取已有的图床链接
+                        logger.info(f"[Doubao] 未在历史中找到图片，尝试从ImageCacheManager获取图床链接")
 
                         try:
-                            from common.superbed_uploader import get_superbed_uploader
-                            uploader = get_superbed_uploader()
-                            upload_result = uploader.upload_file(image_path)
+                            from common.image_cache_manager import get_image_cache_manager
+                            image_cache = get_image_cache_manager()
+                            cached_url = image_cache.get_external_url(image_path)
 
-                            if upload_result.get("success"):
-                                external_url = upload_result.get("link")
-                                logger.info(f"[Doubao] 图片上传成功: {external_url}")
-                                # 将外部URL存储，尝试传给豆包
-                                quote_info["external_image_url"] = external_url
+                            if cached_url:
+                                logger.info(f"[Doubao] 从缓存获取到图床链接: {cached_url}")
+                                quote_info["external_image_url"] = cached_url
                                 quote_info["is_external_image"] = True
                             else:
-                                logger.warning(f"[Doubao] 图片上传失败: {upload_result.get('error')}")
-                                # 降级到视觉模型识别
-                                logger.info(f"[Doubao] 降级到视觉模型识别")
-                                image_description = await self._recognize_image_for_generation(image_path)
-                                if image_description:
-                                    logger.info(f"[Doubao] 图片识别成功，描述长度: {len(image_description)}")
-                                    prompt = f"参考图片描述：{image_description}\n\n{prompt}"
+                                # 如果缓存中没有，尝试上传到图床获取公网URL
+                                logger.info(f"[Doubao] 缓存中无图床链接，尝试上传到111666.best获取URL")
+                                from common.tuchuang111666_uploader import get_tuchuang111666_uploader
+                                uploader = get_tuchuang111666_uploader()
+                                upload_result = uploader.upload_file(image_path)
+
+                                if upload_result.get("success"):
+                                    external_url = upload_result.get("link")
+                                    logger.info(f"[Doubao] 图片上传成功: {external_url}")
+                                    # 将外部URL存储，尝试传给豆包
+                                    quote_info["external_image_url"] = external_url
                                     quote_info["is_external_image"] = True
+                                    # 保存到缓存
+                                    image_cache.update_external_url(image_path, external_url)
+                                    logger.info(f"[Doubao] 图片URL已设置，继续构建请求")
+                                else:
+                                    logger.warning(f"[Doubao] 图片上传失败: {upload_result.get('error')}")
+                                    # 降级到视觉模型识别
+                                    logger.info(f"[Doubao] 降级到视觉模型识别")
+                                    image_description = await self._recognize_image_for_generation(image_path)
+                                    if image_description:
+                                        logger.info(f"[Doubao] 图片识别成功，描述长度: {len(image_description)}")
+                                        prompt = f"参考图片描述：{image_description}\n\n{prompt}"
+                                        quote_info["is_external_image"] = True
                         except Exception as upload_err:
                             logger.error(f"[Doubao] 上传图片异常: {upload_err}")
                             # 降级到视觉模型识别
@@ -598,6 +612,7 @@ class Doubao(Plugin):
 
         # 不使用base64，使用消息引用方式
         image_base64 = None
+        logger.info(f"[Doubao] 引用图片处理完成，quote_info: {quote_info}")
 
         # 超能模式使用不同的API端点
         if use_super_mode:
@@ -778,12 +793,19 @@ class Doubao(Plugin):
 
             # 注意：图片不使用image_block，而是在引用块中携带
 
+            # 如果有外部图片URL，把链接直接加到prompt中（豆包不接受ref_image_url中的外部链接）
+            final_prompt = prompt
+            if quote_info and "external_image_url" in quote_info:
+                external_url = quote_info["external_image_url"]
+                final_prompt = f"参考这张图片: {external_url}\n\n{prompt}"
+                logger.info(f"[Doubao] 将外部图片URL添加到prompt中: {external_url}")
+
             # 添加文本块
             text_block = {
                 "block_type": 10000,
                 "content": {
                     "text_block": {
-                        "text": prompt,
+                        "text": final_prompt,
                         "icon_url": "",
                         "icon_url_dark": "",
                         "summary": ""

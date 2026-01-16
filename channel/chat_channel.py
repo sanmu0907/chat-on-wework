@@ -159,7 +159,7 @@ class ChatChannel(Channel):
                                     error_reply = Reply(ReplyType.TEXT, f"未找到第{skip_latest+1}张历史图片。缓存保留3天，可能图片已过期或不存在。")
                                 else:
                                     error_reply = Reply(ReplyType.TEXT, f"引用的图片已过期或不存在（缓存保留3天），请重新发送图片后再识图\n\n提示：可使用「识图 倒数第2张」识别历史图片")
-                                self._send_reply(error_reply, context)
+                                self._send_reply(context, error_reply)
                         except Exception as e:
                             logger.error(f"[chat_channel] 单聊恢复引用图片缓存失败: {str(e)}")
 
@@ -176,51 +176,62 @@ class ChatChannel(Channel):
                                     if room_id in room_members_data:
                                         members = room_members_data[room_id].get("member_list", [])
                                         user_found = False
-                                        for member in members:
-                                            # 检查 nickname, username 或 name 字段
-                                            if (member.get("nickname") == quoted_user_nickname or
-                                                member.get("username") == quoted_user_nickname or
-                                                member.get("name") == quoted_user_nickname):
-                                                quoted_user_id = member.get("user_id")
-                                                logger.info(f"[chat_channel] 找到被引用用户ID: {quoted_user_id}")
-                                                user_found = True
+                                        quoted_user_id = None
 
-                                                # 从本地文件缓存获取图片
-                                                # 引用场景：默认返回最新图片，支持通过 skip_latest 参数指定历史图片
-                                                image_cache_mgr = get_image_cache_manager()
-                                                cached_image_path = image_cache_mgr.get_image(quoted_user_id, room_id, skip_latest=skip_latest)
+                                        # 首先检查是否引用了机器人自己的消息
+                                        if quoted_user_nickname == self.name or quoted_user_nickname == context.get("msg").to_user_nickname:
+                                            quoted_user_id = self.user_id
+                                            logger.info(f"[chat_channel] 检测到引用机器人自己的图片，user_id: {quoted_user_id}")
+                                            user_found = True
+                                        else:
+                                            # 在群成员中查找
+                                            for member in members:
+                                                # 检查 nickname, username 或 name 字段
+                                                if (member.get("nickname") == quoted_user_nickname or
+                                                    member.get("username") == quoted_user_nickname or
+                                                    member.get("name") == quoted_user_nickname):
+                                                    quoted_user_id = member.get("user_id")
+                                                    logger.info(f"[chat_channel] 找到被引用用户ID: {quoted_user_id}")
+                                                    user_found = True
+                                                    break
 
-                                                if cached_image_path:
-                                                    # 恢复到当前缓存供识图使用
-                                                    session_id = context["session_id"]
-                                                    memory.USER_IMAGE_CACHE[session_id] = {
-                                                        "path": cached_image_path,
-                                                        "msg": msg
-                                                    }
-                                                    logger.info(f"[chat_channel] 已从本地缓存恢复引用的图片: {cached_image_path}")
+                                        # 如果找到了用户，尝试获取图片
+                                        if user_found and quoted_user_id:
+                                            # 从本地文件缓存获取图片
+                                            # 引用场景：默认返回最新图片，支持通过 skip_latest 参数指定历史图片
+                                            image_cache_mgr = get_image_cache_manager()
+                                            cached_image_path = image_cache_mgr.get_image(quoted_user_id, room_id, skip_latest=skip_latest)
 
-                                                    # 将context类型改为IMAGE，触发识图功能
-                                                    context.type = ContextType.IMAGE
-                                                    context.content = cached_image_path
-                                                    ctype = ContextType.IMAGE
-                                                    logger.info(f"[chat_channel] Context类型已转换为IMAGE，准备识图")
+                                            if cached_image_path:
+                                                # 恢复到当前缓存供识图使用
+                                                session_id = context["session_id"]
+                                                memory.USER_IMAGE_CACHE[session_id] = {
+                                                    "path": cached_image_path,
+                                                    "msg": msg
+                                                }
+                                                logger.info(f"[chat_channel] 已从本地缓存恢复引用的图片: {cached_image_path}")
+
+                                                # 将context类型改为IMAGE，触发识图功能
+                                                context.type = ContextType.IMAGE
+                                                context.content = cached_image_path
+                                                ctype = ContextType.IMAGE
+                                                logger.info(f"[chat_channel] Context类型已转换为IMAGE，准备识图")
+                                            else:
+                                                # 图片缓存不存在或已过期，给用户反馈
+                                                logger.warning(f"[chat_channel] 未找到被引用的图片缓存，用户ID: {quoted_user_id}, skip_latest: {skip_latest}")
+                                                from bridge.reply import Reply, ReplyType
+                                                if skip_latest > 0:
+                                                    error_reply = Reply(ReplyType.TEXT, f"未找到 {quoted_user_nickname} 的第{skip_latest+1}张历史图片。缓存保留3天，可能图片已过期或不存在。")
                                                 else:
-                                                    # 图片缓存不存在或已过期，给用户反馈
-                                                    logger.warning(f"[chat_channel] 未找到被引用的图片缓存，用户ID: {quoted_user_id}, skip_latest: {skip_latest}")
-                                                    from bridge.reply import Reply, ReplyType
-                                                    if skip_latest > 0:
-                                                        error_reply = Reply(ReplyType.TEXT, f"未找到 {quoted_user_nickname} 的第{skip_latest+1}张历史图片。缓存保留3天，可能图片已过期或不存在。")
-                                                    else:
-                                                        error_reply = Reply(ReplyType.TEXT, f"引用的图片已过期或不存在（缓存保留3天），请让 {quoted_user_nickname} 重新发送图片后再识图\n\n提示：可使用「识图 倒数第2张」识别历史图片")
-                                                    self._send_reply(error_reply, context)
-                                                break
+                                                    error_reply = Reply(ReplyType.TEXT, f"引用的图片已过期或不存在（缓存保留3天），请让 {quoted_user_nickname} 重新发送图片后再识图\n\n提示：可使用「识图 倒数第2张」识别历史图片")
+                                                self._send_reply(context, error_reply)
 
                                         # 如果没有找到用户，给出提示
-                                        if not user_found:
+                                        elif not user_found:
                                             logger.warning(f"[chat_channel] 在群成员中未找到用户: {quoted_user_nickname}")
                                             from bridge.reply import Reply, ReplyType
                                             error_reply = Reply(ReplyType.TEXT, f"未找到用户 {quoted_user_nickname}，请检查引用的用户名是否正确")
-                                            self._send_reply(error_reply, context)
+                                            self._send_reply(context, error_reply)
                         except Exception as e:
                             logger.error(f"[chat_channel] 群聊恢复引用图片缓存失败: {str(e)}")
 
